@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    container_name: proyecto_recomendaciones-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: proyecto_recomendaciones-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    restart: unless-stopped
