@@ -134,7 +134,7 @@ def get_all_songs():
 @app.post("/api/user_recommendations")
 def get_user_recommendations(payload: dict = Body(...)):
     ratings = payload.get("ratings", {})
-    k = int(payload.get("k", 5))  # <-- Nuevo parámetro con valor por defecto 5
+    k = int(payload.get("k", 5))  
 
     candidate_vec = [ratings.get(song, 0) for song in song_cols]
     genero_predicho = classify_candidate(candidate_vec, k=k)

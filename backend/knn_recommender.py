@@ -9,11 +9,17 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report, ConfusionMatrixDisplay
 
 # ================================
-# 🔑 AUTENTICACIÓN SPOTIFY API
+# AUTENTICACIÓN SPOTIFY API
 # ================================
-# Se configuran las credenciales para acceder a la API de Spotify
-client_id = "707d8850cf45472c82251fccfc9aeefb"
-client_secret = "b3007632f7c7414cab834d0d443f7d7d"
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # carga el archivo .env
+
+client_id = os.getenv("SPOTIFY_CLIENT_ID")
+client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
+
 auth_string = f"{client_id}:{client_secret}"  # Formato requerido por Spotify
 b64_auth_string = base64.b64encode(auth_string.encode()).decode()  # Codificación base64
 
@@ -26,7 +32,7 @@ access_token = response.json()["access_token"]  # Extrae token del JSON
 headers = {"Authorization": f"Bearer {access_token}"}
 
 # ================================
-# 🎵 RECOLECCIÓN DE CANCIONES POR GÉNERO
+# RECOLECCIÓN DE CANCIONES POR GÉNERO
 # ================================
 tracks = []  # Lista que almacenará la información de todas las canciones
 generos = ["rock", "pop", "clasica", "reggae", "salsa", "vallenato"]
@@ -54,7 +60,7 @@ for genero in generos:
         tracks.append(track_info)
 
 # ================================
-# 👥 GENERACIÓN DE USUARIOS Y CALIFICACIONES
+# GENERACIÓN DE USUARIOS Y CALIFICACIONES
 # ================================
 num_usuarios = 3000
 usuarios = []
@@ -80,7 +86,7 @@ for user_id in range(1, num_usuarios + 1):
     usuarios.append(usuario)
 
 # ================================
-# ⚠️ AÑADIR RUIDO A LOS USUARIOS
+# AÑADIR RUIDO A LOS USUARIOS
 # ================================
 # Mezcla los usuarios y cambia el género favorito de un 30% de ellos
 random.shuffle(usuarios)
@@ -94,7 +100,7 @@ for i in range(num_ruido):
     usuarios[i][5] = f"Amante del {nuevo_genero}"
 
 # ================================
-# 💾 GUARDAR DATASETS EN CSV
+# GUARDAR DATASETS EN CSV
 # ================================
 # Archivo de usuarios y calificaciones
 header = ["UserID", "Edad", "Genero", "Region", "GeneroFav", "ClaseUsuario"] + [t["nombre"] for t in tracks]
@@ -111,7 +117,7 @@ with open("info_canciones_spotify.csv", "w", newline="", encoding="utf-8") as f:
         writer.writerow([t["nombre"], t["artista"], t["album"], t["genero"], t["id_spotify"], t["imagen"], t["url_spotify"]])
 
 # ================================
-# 🔹 FUNCIONES DE SIMILITUD Y KNN
+# FUNCIONES DE SIMILITUD Y KNN
 # ================================
 def _common_indices(vec_a, vec_b):
     """Devuelve índices donde ambos vectores tienen valores > 0"""
@@ -132,7 +138,7 @@ def cosine_similarity(a, b):
 METRIC_FUNCTIONS = {"cosine": cosine_similarity}
 
 # ================================
-# 🔹 FUNCIONES PARA CARGAR DATASET
+# FUNCIONES PARA CARGAR DATASET
 # ================================
 def load_dataset(csv_path):
     """Carga dataset de usuarios y devuelve DataFrame y lista de canciones"""
@@ -159,51 +165,69 @@ def build_user_vectors(df_users, song_cols):
     return user_list, user_map
 
 # ================================
-# 🔹 SIMILITUDES Y VECINOS
+# SIMILITUDES Y VECINOS
 # ================================
 def compute_all_similarities(candidate_vec, user_vectors, metric="cosine"):
     """Calcula similitud de un candidato con todos los usuarios"""
-    func = METRIC_FUNCTIONS[metric]
-    results = []
+    
+    func = METRIC_FUNCTIONS[metric]  # Selecciona la función de similitud (cosine)
+    results = []  # Lista para guardar (user_id, similitud)
+    
+    
+    # Recorre todos los usuarios del dataset
     for user_id, vec in user_vectors:
-        sim = func(candidate_vec, vec)
-        results.append((user_id, sim))
-    results.sort(key=lambda x: x[1], reverse=True)
-    return results
+        sim = func(candidate_vec, vec)  # Calcula la similitud entre candidato y usuario
+        results.append((user_id, sim))  # Guarda el id del usuario y la similitud
+    
+    results.sort(key=lambda x: x[1], reverse=True)  # Ordena de mayor a menor similitud
+    return results  # Devuelve la lista de todos los usuarios con su similitud
+
 
 def get_top_k_neighbors(similarities, k):
     """Obtiene los k vecinos más similares con similitud > 0"""
-    filtered = [p for p in similarities if p[1] > 0]
-    return filtered[:k]
+    
+    filtered = [p for p in similarities if p[1] > 0]  # Filtra solo usuarios con similitud positiva
+    return filtered[:k]  # Devuelve los k primeros (los más similares)
+
 
 def classify_candidate_by_neighbors(neighbors, df_users):
-    """Clasifica al candidato según los vecinos más cercanos"""
-    votes = []
+    """Clasifica al usuario candidato según los vecinos más cercanos"""
+    votes = []  # Lista para guardar los géneros favoritos de los vecinos
+    # Recorre los vecinos más cercanos (user_id y su similitud)
     for user_id, _ in neighbors:
-        row = df_users.loc[df_users['UserID'] == user_id]
-        if not row.empty:
-            votes.append(str(row.iloc[0]['GeneroFav']))
+        row = df_users.loc[df_users['UserID'] == user_id]  # Obtiene la fila del vecino en el DataFrame
+        if not row.empty:  # Si se encuentra el usuario
+            votes.append(str(row.iloc[0]['GeneroFav']))  # Añade su género favorito a la lista de votos
+    # Si ningún vecino válido encontró género, retorna mensaje
     if not votes:
         return "Sin vecinos válidos", {}
-    counter = Counter(votes)
+    counter = Counter(votes)  # Cuenta cuántos votos tiene cada género
+    # Devuelve el género más votado y un diccionario con el conteo de todos los géneros
     return counter.most_common(1)[0][0], dict(counter)
 
+
 def predict_ratings(candidate_vec, neighbors, user_map, song_cols):
-    """Predice calificaciones de canciones no votadas"""
-    predictions = {}
+    """Predice calificaciones de canciones que el usuario candidato aún no ha calificado"""
+    predictions = {}  # Diccionario donde guardaremos las canciones y su calificación predicha
+    # Recorre todas las canciones del dataset
     for idx, song in enumerate(song_cols):
         if candidate_vec[idx] > 0:
+            # Si el usuario ya calificó la canción, se salta y no predice
             continue
+        # Inicializa acumuladores para el promedio ponderado
         num, den, count_valid = 0.0, 0.0, 0
+        # Recorre los vecinos más cercanos y su similitud
         for user_id, sim in neighbors:
-            rating = user_map[user_id][idx]
-            if rating > 0:
-                num += sim * rating
-                den += abs(sim)
-                count_valid += 1
+            rating = user_map[user_id][idx]  # Obtiene la calificación del vecino para esta canción
+            if rating > 0:  # Solo considera vecinos que hayan calificado la canción
+                num += sim * rating  # Multiplica la calificación por la similitud y suma al numerador
+                den += abs(sim)       # Suma la similitud absoluta al denominador (ponderación)
+                count_valid += 1      # Cuenta cuántos vecinos válidos contribuyeron
+        # Si al menos un vecino contribuyó y el denominador no es cero
         if count_valid > 0 and den > 0:
-            predictions[song] = num / den
-    return predictions
+            predictions[song] = num / den  # Calcula promedio ponderado y lo guarda
+    return predictions  # Devuelve diccionario con canciones y calificaciones predichas
+
 
 def recommend_songs(predictions, song_info_df, top_n=10, user_genre=None):
     """Genera recomendaciones top N con información de canciones"""
@@ -246,27 +270,34 @@ def recalcular_perfil(usuario_candidato, df_users, user_map, song_info_df, song_
     return predicted_class, recommendations
 
 # ================================
-# 🔹 EVALUACIÓN KNN
+# EVALUACIÓN KNN
 # ================================
 def evaluate_knn_with_split(csv_path, test_ratio=0.2, k=5, metric="cosine"):
     """Evalúa el modelo KNN usando un conjunto de prueba"""
+    # Carga el dataset de usuarios y canciones
     df, song_cols = load_dataset(csv_path)
+    # Mezcla aleatoriamente los usuarios para dividir en entrenamiento y prueba
     users = df.sample(frac=1, random_state=42).reset_index(drop=True)
+    # Calcula el índice de separación según el ratio de prueba (por ejemplo 20%)
     split_index = int(len(users) * (1 - test_ratio))
-    df_train = users.iloc[:split_index]
-    df_test = users.iloc[split_index:]
-
+    # Datos de entrenamiento y prueba
+    df_train = users.iloc[:split_index]  # primeros 80% → entrenamiento
+    df_test = users.iloc[split_index:]   # últimos 20% → prueb
+    # Construye los vectores de calificaciones de los usuarios de entrenamiento
     train_vectors, train_map = build_user_vectors(df_train, song_cols)
+    # Listas para almacenar los géneros verdaderos y predichos
     y_true, y_pred = [], []
-
+    # Itera sobre cada usuario del conjunto de prueba
     for _, row in df_test.iterrows():
-        candidate_vec = user_vector_from_row(row, song_cols)
-        sims = compute_all_similarities(candidate_vec, train_vectors, metric=metric)
-        neighbors = get_top_k_neighbors(sims, k)
-        predicted_class, _ = classify_candidate_by_neighbors(neighbors, df_train)
+        candidate_vec = user_vector_from_row(row, song_cols)  # Vector de calificaciones del candidato
+        sims = compute_all_similarities(candidate_vec, train_vectors, metric=metric)  # Similitudes con todos los usuarios de entrenamiento
+        neighbors = get_top_k_neighbors(sims, k)  # Selecciona los K vecinos más similares
+        predicted_class, _ = classify_candidate_by_neighbors(neighbors, df_train)  # Predice el género del candidato
+        # Solo se guarda si hay vecinos válidos
         if predicted_class != "Sin vecinos válidos":
-            y_true.append(row["GeneroFav"])
-            y_pred.append(predicted_class)
+            y_true.append(row["GeneroFav"])  # Género real del usuario de prueba
+            y_pred.append(predicted_class)   # Género predicho por KNN
+
 
     # Métricas de evaluación
     accuracy = accuracy_score(y_true, y_pred)
@@ -285,7 +316,7 @@ def evaluate_knn_with_split(csv_path, test_ratio=0.2, k=5, metric="cosine"):
     plt.show()
 
 # ================================
-# 🔹 EJEMPLO DE USO DEL SISTEMA
+# EJEMPLO DE USO DEL SISTEMA
 # ================================
 # Cargar datasets
 df_users, song_cols = load_dataset("dataset_canciones_spotify.csv")

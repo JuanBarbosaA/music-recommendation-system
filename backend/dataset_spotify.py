@@ -4,11 +4,16 @@ import random    # Para generar valores aleatorios
 import csv       # Para crear y escribir archivos CSV
 
 # ================================
-# 🔑 AUTENTICACIÓN SPOTIFY API
+# AUTENTICACIÓN SPOTIFY API
 # ================================
 # Credenciales de la aplicación Spotify
-client_id = "707d8850cf45472c82251fccfc9aeefb"
-client_secret = "b3007632f7c7414cab834d0d443f7d7d"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # carga el archivo .env
+
+client_id = os.getenv("SPOTIFY_CLIENT_ID")
+client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
 
 # Combina ID y secreto en un solo string y lo codifica en base64
 auth_string = f"{client_id}:{client_secret}"
@@ -28,7 +33,7 @@ headers = {"Authorization": f"Bearer {access_token}"}
 tracks = []  # Lista para almacenar información de canciones
 
 # ================================
-# 🎵 GÉNEROS Y RECOLECCIÓN DE CANCIONES
+# GÉNEROS Y RECOLECCIÓN DE CANCIONES
 # ================================
 generos = ["rock", "pop", "clasica", "reggae", "salsa", "vallenato"]  # Géneros a buscar
 limite_por_genero = 40  # Número máximo de canciones por género
@@ -55,7 +60,7 @@ for genero in generos:
         tracks.append(track_info)  # Añade la canción a la lista
 
 # ================================
-# 👥 GENERACIÓN DE USUARIOS Y CALIFICACIONES
+# GENERACIÓN DE USUARIOS Y CALIFICACIONES
 # ================================
 num_usuarios = 3000  # Número de usuarios simulados
 usuarios = []  # Lista para almacenar información de usuarios
@@ -83,7 +88,7 @@ for user_id in range(1, num_usuarios + 1):
     usuarios.append(usuario)  # Añade el usuario a la lista
 
 # ================================
-# ⚠️ AÑADIR RUIDO (30% USUARIOS CAMBIADOS)
+# AÑADIR RUIDO (30% USUARIOS CAMBIADOS)
 # ================================
 random.shuffle(usuarios)  # Mezcla aleatoriamente los usuarios
 porcentaje_ruido = 0.3
@@ -97,10 +102,10 @@ for i in range(num_ruido):
     usuarios[i][4] = nuevo_genero
     usuarios[i][5] = f"Amante del {nuevo_genero}"
 
-print(f"⚙️ Se modificaron {num_ruido} usuarios ({porcentaje_ruido*100:.0f}%) para añadir ruido.\n")
+print(f"Se modificaron {num_ruido} usuarios ({porcentaje_ruido*100:.0f}%) para añadir ruido.\n")
 
 # ================================
-# 💾 GUARDAR CSVs
+# GUARDAR CSVs
 # ================================
 # Header para el CSV de usuarios con calificaciones
 header = ["UserID", "Edad", "Genero", "Region", "GeneroFav", "ClaseUsuario"] + [t["nombre"] for t in tracks]
@@ -118,5 +123,5 @@ with open("info_canciones_spotify.csv", "w", newline="", encoding="utf-8") as f:
     for t in tracks:
         writer.writerow([t["nombre"], t["artista"], t["album"], t["genero"], t["id_spotify"], t["imagen"], t["url_spotify"]])
 
-print("✅ Dataset generado con ruido controlado (70% limpio, 30% modificado)")
-print("✅ Archivos guardados: dataset_canciones_spotify.csv y info_canciones_spotify.csv")
+print("Dataset generado con ruido controlado (70% limpio, 30% modificado)")
+print("Archivos guardados: dataset_canciones_spotify.csv y info_canciones_spotify.csv")
