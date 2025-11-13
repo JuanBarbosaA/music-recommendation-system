@@ -10,7 +10,7 @@ export default function UserProfile() {
   const [songs, setSongs] = useState([]);
   const [ratings, setRatings] = useState(JSON.parse(localStorage.getItem("ratings")) || {});
   const [kValue, setKValue] = useState(5);
-
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   // 🔹 Cargar usuario al montar el componente
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -25,7 +25,7 @@ export default function UserProfile() {
       try {
         if (Object.keys(ratings).length === 0) return;
 
-        const res = await axios.post("http://localhost:8000/api/user_recommendations", {
+        const res = await axios.post(`${API_BASE_URL}/user_recommendations`, {
           ratings,
           k: kValue,
         });

@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function SongGallery() {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const [songs, setSongs] = useState([]);
   const [ratings, setRatings] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
     axios
-      .get("http://localhost:8000/api/songs")
+      .get(`${API_BASE_URL}/songs`)
       .then((res) => setSongs(res.data))
       .catch((err) => console.error("Error al obtener canciones:", err));
   }, []);
@@ -25,9 +26,7 @@ const sendRatings = async () => {
     localStorage.setItem("ratings", JSON.stringify(ratings));
 
     // Llamada al backend
-    const res = await axios.post("http://localhost:8000/api/recommend", {
-      ratings,
-    });
+    const res = await axios.post(`${API_BASE_URL}/recommend`, { ratings });
 
     const genero = res.data.GeneroDetectado;
     localStorage.setItem("generoFavorito", genero);
